@@ -1,0 +1,10 @@
+customtkinter>=5.2
+pygame>=2.5
+mutagen>=1.46
+tkinterdnd2>=0.4
+pystray>=0.19
+pillow>=10.0
+requests>=2.31
+# opcionális:
+keyring>=24.0        # az API jelszó tárolása a Windows Credential Managerben
+pywinstyles>=1.8     # Windows 11 címsorszín
