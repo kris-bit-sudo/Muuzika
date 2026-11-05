@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.1.0-beta3
+
+- Search match counter, previous/next arrows, Enter and Shift+Enter navigation.
+- Stable header icon dimensions and a bounded tooltip area during sync.
+- Library uses one search field and hides playback controls while audio continues.
+- Add missing explicitly syncs and adds only missing server tracks to the playlist.
+- Removed obsolete publishing/license-status material from source packages.
+- README and Windows packaging now include the repository's GPLv3 license.
+
 ## 3.1.0-beta2
 
 - Default size 400 × 500; saved custom size still respected.

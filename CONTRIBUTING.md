@@ -16,4 +16,4 @@ Use `MUUZIKA_DATA_DIR` for isolated manual tests. Keep preferences outside the
 source tree. Preserve English UI labels, explicit server sync, keyboard access
 and saved appearance behavior. Include reproduction steps for fixes.
 
-Licensing is not yet selected; see LICENSE-STATUS.md before submitting code.
+See LICENSE for the project's GNU GPL version 3 license.

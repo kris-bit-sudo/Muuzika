@@ -40,6 +40,7 @@ class StudioUI(PaletteUI):
             text_color=c['COLOR_TEXT_DARK'] if accent else c['WHEEL_TEXT' if self.is_retro else 'BUTTON_TEXT'],
             font=('Segoe UI Semibold', 12))
         if icon:
+            button.configure(corner_radius=4 if width<=24 else 6,border_spacing=0)
             self.set_button_icon(button, icon, c['COLOR_TEXT_DARK'] if accent else c['WHEEL_TEXT' if self.is_retro else 'ICON'])
         if hint:
             self.add_tooltip(button, hint)
@@ -90,6 +91,8 @@ class StudioUI(PaletteUI):
         self.search_shell=ctk.CTkFrame(header,fg_color=c['FIELD_BG'],border_width=1,border_color=c['FIELD_BORDER'],corner_radius=8)
         self.search_shell.grid(row=1,column=0,sticky='ew',padx=(0,8))
         self.search_shell.grid_columnconfigure(1,weight=1)
+        self.search_shell.configure(height=34,width=1)
+        self.search_shell.grid_propagate(False)
         search_art=transport_icon('search',c['FIELD_TEXT'])
         self.search_glyph=ctk.CTkLabel(self.search_shell,text='',width=24,image=ctk.CTkImage(light_image=search_art,dark_image=search_art,size=(18,18)))
         self.search_glyph.grid(row=0,column=0,padx=(5,0))
@@ -100,7 +103,16 @@ class StudioUI(PaletteUI):
         self.search_button = self.search_shell
         self.list_search.bind('<Return>',self.search_from_header)
         self.list_search.bind('<Escape>',lambda e:self.hide_list_search())
-        self.list_search.bind('<FocusOut>',lambda e:self.hide_list_search(False))
+        self.list_search.bind('<Shift-Return>',lambda e:self.find_in_queue(direction=-1))
+        self.list_search.bind('<KeyRelease>',self.update_search_results)
+        self.search_count=ctk.CTkLabel(self.search_shell,text='',width=35,font=('Segoe UI',11),text_color=c['FIELD_TEXT'])
+        self.search_count.grid(row=0,column=2)
+        self.search_previous=self.ui_button(self.search_shell,'',lambda:self.find_in_queue(direction=-1),24,icon='up',hint='Previous match · Shift+Enter')
+        self.search_next=self.ui_button(self.search_shell,'',self.find_in_queue,24,icon='down',hint='Next match · Enter')
+        self.search_previous.grid(row=0,column=3)
+        self.search_next.grid(row=0,column=4,padx=(1,3))
+        self._search_query=''
+        self._search_index=None
         self.add_files_button=self.ui_button(header,'',self.add_files,32,icon='add',hint='Add files · Ctrl+O')
         self.add_files_button.grid(row=1,column=1,padx=(0,6))
         self.sync_button=self.ui_button(header,'',self.sync_library,32,icon='cloud',hint='Server sync · manual refresh')
@@ -202,8 +214,12 @@ class StudioUI(PaletteUI):
         self.footer = ctk.CTkFrame(main,fg_color='transparent')
         self.cloud_button = self.tab_buttons['Library']
         if self._syncing: self.sync_button.configure(state='disabled')
-        self.status_label = self.ui_label(main,'',12,secondary=True,height=22,wraplength=420)
-        self.status_label.grid(row=5,column=0,sticky='ew',padx=12,pady=(0,3))
+        self.status_host=ctk.CTkFrame(main,fg_color='transparent',height=25,width=1)
+        self.status_host.grid(row=5,column=0,sticky='ew',padx=12)
+        self.status_host.grid_propagate(False)
+        self.status_host.grid_columnconfigure(0,weight=1)
+        self.status_label = self.ui_label(self.status_host,'',12,secondary=True,height=22,wraplength=300)
+        self.status_label.grid(row=0,column=0,sticky='ew')
         self._status_text = ''
         self.update_mode_buttons()
         self.update_play_button()
@@ -269,6 +285,7 @@ class StudioUI(PaletteUI):
             name = 'Settings'
             self._settings_section = 'Window'
         self._view = name
+        if name != 'Player': self.hide_list_search(False)
         self.hide_tooltip()
         self.player_page.grid_remove()
         if self.other_page is not None:
@@ -284,11 +301,11 @@ class StudioUI(PaletteUI):
             button._base_fill = button.cget('fg_color')
             button.configure(hover_color=blend(button._base_fill,self.colors['WHEEL_BORDER'],.18) if self.is_retro else self.colors['COLOR_DRAG_BORDER_NORMAL'])
         full = name == 'Player'
-        focused_page=name in ('Settings','Colors','Palettes','Notice','Navigation')
+        focused_page=name != 'Player'
         for widget in (self.search_shell,self.add_files_button,self.sync_button):
             widget.grid_remove() if focused_page else widget.grid()
         self.playback_panel.grid_remove() if focused_page else self.playback_panel.grid()
-        self.status_label.grid_remove() if focused_page else self.status_label.grid()
+        self.status_host.grid_remove() if focused_page else self.status_host.grid()
         self.back_button.grid_remove() if full else self.back_button.grid()
         for widget in (self.seek_bar,self.time_frame,self.volume_frame):
             widget.grid() if full else widget.grid_remove()
@@ -326,8 +343,15 @@ class StudioUI(PaletteUI):
 
     def hide_list_search(self, restore_focus=True):
         self.list_search.delete(0,'end')
+        self._search_query=''
+        self._search_index=None
+        self.search_count.configure(text='')
         if restore_focus: self.focus_set()
         return 'break'
+
+    def update_search_results(self,event=None):
+        if event is not None and event.keysym in ('Return','Escape'): return
+        self.find_in_queue(direction=0)
 
     def toggle_list_search(self):
         if self._view == 'Player' and self.list_search.winfo_ismapped(): self.hide_list_search()
@@ -461,7 +485,7 @@ class StudioUI(PaletteUI):
         search_variable.trace_add('write',lambda *_:fill())
         row = ctk.CTkFrame(parent,fg_color='transparent')
         row.grid(row=3,column=0,sticky='ew',pady=7)
-        for i in range(3): row.grid_columnconfigure(i,weight=1,uniform='actions')
+        for i in range(2): row.grid_columnconfigure(i,weight=1,uniform='actions')
         def add(all_tracks=False):
             chosen = list(results) if all_tracks else [results[i] for i in box.curselection()]
             self.add_tracks(chosen,announce=False)
@@ -469,7 +493,14 @@ class StudioUI(PaletteUI):
             else: status.configure(text='Select tracks first. Ctrl/Shift selects more than one.')
         self.ui_button(row,'Add selected',add,width=1,accent=True).grid(row=0,column=0,sticky='ew',padx=(0,4))
         self.ui_button(row,'Add all',lambda:add(True),width=1).grid(row=0,column=1,sticky='ew',padx=4)
-        self.ui_button(row,'Server sync',self.sync_library,width=1).grid(row=0,column=2,sticky='ew',padx=(4,0))
+        self.library_sync_button=self.ui_button(row,'Server sync',self.sync_library,width=1)
+        self.library_sync_button.grid(row=1,column=0,sticky='ew',padx=(0,4),pady=(6,0))
+        self.library_missing_button=self.ui_button(row,'Add missing',lambda:self.sync_library(add_missing=True),width=1)
+        self.library_missing_button.grid(row=1,column=1,sticky='ew',padx=(4,0),pady=(6,0))
+        self.library_status=status
+        if self._syncing:
+            self.library_sync_button.configure(state='disabled')
+            self.library_missing_button.configure(state='disabled')
         box.bind('<Double-1>',lambda e:add())
         self.library_box, self.library_search = box, entry
         reload_library()

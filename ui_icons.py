@@ -52,6 +52,8 @@ def transport_icon(kind, color, size=22):
     elif kind == 'back':
         line([(14,5),(7,12),(14,19)],3)
         line([(7,12),(21,12)],3)
+    elif kind in ('up','down'):
+        line([(5,15),(12,8),(19,15)] if kind=='up' else [(5,9),(12,16),(19,9)],3)
     elif kind == 'cloud':
         draw.ellipse((5*scale,5*scale,16*scale,16*scale),fill=color)
         draw.ellipse((11*scale,8*scale,22*scale,19*scale),fill=color)

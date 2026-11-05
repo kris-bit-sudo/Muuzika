@@ -1,4 +1,13 @@
-# Muuzika 3.1.0-beta2
+# Muuzika 3.1.0-beta3
+
+- Search keeps its query, shows the current match and supports previous/next arrows.
+- Enter moves forward; Shift+Enter moves back; clicking outside ends search.
+- Stable cloud/add buttons during sync.
+- Library hides playback controls and duplicate header search while music continues.
+- Add missing refreshes the server library and adds only tracks absent from the playlist.
+- Source documentation cleanup and GPLv3 license included in Windows packages.
+
+## Previous beta2 highlights
 
 A compact Windows music player with Original Green, Retro controls and
 customizable palettes. Vibe-coded by kris.

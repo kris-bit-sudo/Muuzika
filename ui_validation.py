@@ -39,6 +39,18 @@ def run_checks(app, m, sample):
     assert not app.footer.winfo_ismapped()
     app.list_search.insert(0,'Third');app.search_from_header();pump()
     assert app.playlist_box.curselection() == (2,)
+    app.hide_list_search(False)
+    app.list_search.insert(0,'sample');app.update_search_results();pump()
+    assert app.playlist_box.curselection()==(0,) and app.search_count.cget('text')=='1/3'
+    app.search_next.invoke();pump()
+    assert app.playlist_box.curselection()==(1,) and app.list_search.get()=='sample'
+    app.search_previous.invoke();app.search_previous.invoke();pump()
+    assert app.playlist_box.curselection()==(2,) and app.search_count.cget('text')=='3/3'
+    app.list_search.delete(0,'end');app.list_search.insert(0,'absent');app.update_search_results()
+    assert app.search_count.cget('text')=='0/0'
+    app.main_container.event_generate('<Button-1>',x=1,y=1);pump()
+    assert not app.list_search.get() and app.search_count.cget('text')==''
+    checks.append('Search arrows cycle all matches in both directions; outside click ends search')
     checks.append('Default 400 × 500; single click plays; persistent header search finds tracks and clears')
     app.volume_slider.set(0);app.set_volume(0)
     app.play_index(0);pump()
@@ -71,6 +83,34 @@ def run_checks(app, m, sample):
     app.library_store.save(app.active_profile(),[remote.to_dict()])
     app.open_nextcloud_browser();pump();no_windows()
     assert app._view == 'Library' and app.library_box.size() == 1
+    assert not app.playback_panel.winfo_ismapped() and not app.search_shell.winfo_ismapped()
+    assert not app.status_host.winfo_ismapped() and app.playing
+    original=list(app.tracks)
+    new=m.Track(kind='remote',id='new',title='New remote',source_profile=app.active_profile())
+    app.add_tracks([remote],announce=False)
+    def immediate_thread(target,daemon):return SimpleNamespace(start=target)
+    with patch.object(app,'get_client',return_value=SimpleNamespace(all_songs=lambda **kw:[remote,new])), \
+         patch.object(m.Track,'from_remote',side_effect=lambda track:track), \
+         patch.object(m.threading,'Thread',side_effect=immediate_thread):
+        app.library_missing_button.invoke();app._drain_ui();pump()
+        assert len(app.tracks)==len(original)+2 and app._view=='Library'
+        assert app.library_status.cget('text')=='1 missing tracks added.'
+        app.library_missing_button.invoke();app._drain_ui();pump()
+        assert len(app.tracks)==len(original)+2
+        assert app.library_status.cget('text')=='Your playlist is already up to date.'
+    app.tracks=original;app.refresh_rows()
+    app.show_view('Player');pump()
+    watched_header=(app.add_files_button,app.sync_button,app.search_shell,app.playlist_box)
+    def header_positions():
+        pump()
+        return [(w.winfo_x(),w.winfo_y(),w.winfo_width(),w.winfo_height()) for w in watched_header]
+    stable=header_positions()
+    for busy in (True,False,True,False):
+        app.set_sync_busy(busy)
+        app.status_label.configure(text='Server sync · manual refresh')
+        assert header_positions()==stable
+    app.hide_tooltip();app.show_view('Library');pump()
+    checks.append('Library hides playback and duplicate search; Add missing syncs once and deduplicates; header geometry stays fixed')
     app.library_search.insert(0,'missing')
     app.library_search.event_generate('<KeyRelease>');pump()
     assert app.library_box.size() == 0

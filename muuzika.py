@@ -716,7 +716,8 @@ class MuuzikaApp(StudioUI, TkinterDnD.Tk):
 
 
     def set_button_icon(self, button, kind, color):
-        icon = ctk.CTkImage(transport_icon(kind, color), size=(22, 22))
+        size=16 if button.cget('width')<=24 else 18
+        icon = ctk.CTkImage(transport_icon(kind, color), size=(size, size))
         self._button_images[str(button)] = icon
         button.configure(require_redraw=True, text="", image=icon)
 
@@ -1293,7 +1294,13 @@ class MuuzikaApp(StudioUI, TkinterDnD.Tk):
             self.save_data()
         self.after(15000, self._autosave)
 
-    def sync_library(self):
+    def set_sync_busy(self, busy):
+        for name in ('sync_button','library_sync_button','library_missing_button'):
+            button=getattr(self,name,None)
+            if button is not None and button.winfo_exists():
+                button.configure(state='disabled' if busy else 'normal')
+
+    def sync_library(self, add_missing=False):
         if self._syncing:
             self.set_status("Sync is already in progress.")
             return
@@ -1304,7 +1311,8 @@ class MuuzikaApp(StudioUI, TkinterDnD.Tk):
             return
         profile = self.active_profile()
         self._syncing = True
-        self.sync_button.configure(state="disabled")
+        self.hide_tooltip()
+        self.set_sync_busy(True)
         self.set_status("Fetching library… The current local copy is kept until sync succeeds.")
         def progress(count):
             self.ui_call(lambda: self.set_status(f"Syncing · {count} tracks")
@@ -1323,7 +1331,7 @@ class MuuzikaApp(StudioUI, TkinterDnD.Tk):
             self.ui_call(lambda: finish(tracks, None))
         def finish(tracks, error):
             self._syncing = False
-            self.sync_button.configure(state="normal")
+            self.set_sync_busy(False)
             if profile != self.active_profile():
                 self.set_status("Previous connection sync finished. You can now sync the new connection.")
                 return
@@ -1334,27 +1342,37 @@ class MuuzikaApp(StudioUI, TkinterDnD.Tk):
             reload_library = getattr(self, "_reload_library", None)
             if reload_library:
                 reload_library()
+            if add_missing:
+                added=self.add_tracks(tracks,announce=False)
+                status=getattr(self,'library_status',None)
+                if status is not None and status.winfo_exists():
+                    status.configure(text=f'{added} missing tracks added.' if added else 'Your playlist is already up to date.')
         threading.Thread(target=worker, daemon=True).start()
 
 
-    def find_in_queue(self, event=None):
+    def find_in_queue(self, event=None, direction=1):
         query = search_text(self.list_search.get().strip())
-        if not query or not self.tracks:
-            self.hide_list_search()
+        if not query:
+            self._search_query=''
+            self._search_index=None
+            self.search_count.configure(text='')
             return "break"
-        selected = self.playlist_box.curselection()
-        start = selected[0] + 1 if selected else 0
-        for offset in range(len(self.tracks)):
-            index = (start + offset) % len(self.tracks)
-            track = self.tracks[index]
-            if all(word in search_text(f"{track.title} {track.artist} {track.album}") for word in query.split()):
-                self.playlist_box.selection_clear(0, tk.END)
-                self.playlist_box.selection_set(index)
-                self.playlist_box.see(index)
-                self.set_status(f"Found: {track.display_name()}")
-                self.hide_list_search()
-                return "break"
-        self.set_status("No matching tracks in the playlist.")
+        matches=[i for i,t in enumerate(self.tracks)
+                 if all(word in search_text(f'{t.title} {t.artist} {t.album}') for word in query.split())]
+        previous=getattr(self,'_search_index',None)
+        same=query==getattr(self,'_search_query','')
+        self._search_query=query
+        if not matches:
+            self._search_index=None
+            self.search_count.configure(text='0/0')
+            return 'break'
+        position=(matches.index(previous)+direction)%len(matches) if same and previous in matches else (len(matches)-1 if direction<0 else 0)
+        index=matches[position]
+        self._search_index=index
+        self.playlist_box.selection_clear(0,tk.END)
+        self.playlist_box.selection_set(index)
+        self.playlist_box.see(index)
+        self.search_count.configure(text=f'{position+1}/{len(matches)}')
         return "break"
 
     def queue_menu(self, event):

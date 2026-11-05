@@ -10,7 +10,7 @@ import unicodedata
 from datetime import datetime
 from urllib.parse import urlsplit, urlunsplit
 
-VERSION = "3.1.0-beta2"
+VERSION = "3.1.0-beta3"
 
 
 def profile_id(url: str, username: str) -> str:

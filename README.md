@@ -1,4 +1,4 @@
-# Muuzika 3.1.0-beta2
+# Muuzika 3.1.0-beta3
 
 Vibe-coded by kris.
 
@@ -65,13 +65,18 @@ is always available, and manual server sync has its own cloud icon. Typography
 is larger. Settings > Style > Choose a color palette shows previews; Save as
 stores the current colors as a reusable named preset, immediately and locally.
 
-## Repository preparation
+## Beta3 improvements
 
-See [publishing guide (Hungarian)](docs/PUBLISHING-HU.md),
-[release notes](docs/RELEASE-NOTES.md), [contributing](CONTRIBUTING.md) and
-[license status](LICENSE-STATUS.md). No open-source license has been selected
-and logo provenance is recorded from the maintainer in LICENSE-STATUS.md.
-`python prepare_source.py` creates an allowlisted source ZIP without user data.
-Windows CI is configured in `.github/workflows/windows.yml`; its first hosted
-run is still pending. It checks/tests/builds, but never publishes a release.
+Search keeps your query and shows a match counter with previous/next arrows.
+Enter moves forward; Shift+Enter moves back. Click outside to end the search.
+Library has one search field and hides playback controls while music continues.
+Add missing explicitly refreshes the server library and adds only tracks not
+already in the playlist. Ordinary Server sync only refreshes the library.
+
+## Development and license
+
+See [release notes](docs/RELEASE-NOTES.md), [contributing](CONTRIBUTING.md)
+and [LICENSE](LICENSE) (GNU GPL version 3). The logo is maintainer-provided.
+`python prepare_source.py` creates a source ZIP without user data.
+Windows CI checks, tests and builds; it does not publish releases.
 

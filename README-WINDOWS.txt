@@ -1,4 +1,4 @@
-Muuzika 3.1.0-beta2 - Windows x64
+Muuzika 3.1.0-beta3 - Windows x64
 Vibe-coded by kris
 
 START
@@ -40,7 +40,7 @@ TESTING AND NOTICES
 Tested with isolated synthetic metadata, silent audio and blocked networking.
 No live Nextcloud server or clean Windows VM was tested. This beta is unsigned.
 Third-party components: THIRD-PARTY-NOTICES.txt and licenses/.
-Project license/provenance review is still pending before a public release.
+Project license: GNU GPL version 3; see LICENSE.
 
 
 Pre-release review update:

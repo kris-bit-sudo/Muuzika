@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parent
 dist_root = ROOT / 'dist' / VERSION
 subprocess.run([sys.executable, '-m', 'PyInstaller', '--noconfirm', '--distpath', str(dist_root), 'Muuzika.spec'], cwd=ROOT, check=True)
 package = dist_root / 'Muuzika-Windows'
-for name in ('README-WINDOWS.txt', 'VERSION'):
+for name in ('README-WINDOWS.txt', 'VERSION', 'LICENSE'):
     shutil.copy2(ROOT / name, package / name)
 license_dir = package / 'licenses'
 license_dir.mkdir(exist_ok=True)
