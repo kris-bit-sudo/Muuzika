@@ -83,6 +83,11 @@ def run_checks(app, m, sample):
     app.library_store.save(app.active_profile(),[remote.to_dict()])
     app.open_nextcloud_browser();pump();no_windows()
     assert app._view == 'Library' and app.library_box.size() == 1
+    assert app.library_search_glyph.winfo_ismapped()
+    for shell in (app.library_search_shell,app.search_shell):
+        assert shell.cget('height')==34
+    for arrow in (app.search_previous,app.search_next,app.library_previous,app.library_next):
+        assert arrow.cget('fg_color')=='transparent' and arrow.cget('border_width')==0
     assert not app.playback_panel.winfo_ismapped() and not app.search_shell.winfo_ismapped()
     assert not app.status_host.winfo_ismapped() and app.playing
     original=list(app.tracks)
@@ -109,6 +114,28 @@ def run_checks(app, m, sample):
         app.set_sync_busy(busy)
         app.status_label.configure(text='Server sync · manual refresh')
         assert header_positions()==stable
+    # Exercise the actual mouse bindings, async completion and delayed click animation.
+    import time
+    tasks=[]
+    def deferred_thread(target,daemon):return SimpleNamespace(start=lambda:tasks.append(target))
+    movements=[]
+    for widget in watched_header:
+        widget.bind('<Configure>',lambda e:movements.append((e.widget,e.x,e.y,e.width,e.height)),add='+')
+    with patch.object(app,'get_client',return_value=SimpleNamespace(all_songs=lambda **kw:[remote,new])), \
+         patch.object(m.Track,'from_remote',side_effect=lambda track:track), \
+         patch.object(m.threading,'Thread',side_effect=deferred_thread):
+        for _ in range(3):
+            app.sync_button._canvas.event_generate('<Enter>');pump()
+            app.sync_button._canvas.event_generate('<ButtonPress-1>',x=12,y=12);pump()
+            assert app._syncing and header_positions()==stable
+            app.sync_button._canvas.event_generate('<ButtonRelease-1>',x=12,y=12);pump()
+            tasks.pop()();app._drain_ui();pump()
+            deadline=time.monotonic()+.15
+            while time.monotonic()<deadline:
+                pump();time.sleep(.005)
+            assert header_positions()==stable
+    assert not movements, movements
+    checks.append('Actual cloud press/release and delayed completion never move neighboring widgets; both search bars use transparent arrows')
     app.hide_tooltip();app.show_view('Library');pump()
     checks.append('Library hides playback and duplicate search; Add missing syncs once and deduplicates; header geometry stays fixed')
     app.library_search.insert(0,'missing')

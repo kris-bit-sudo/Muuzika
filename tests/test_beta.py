@@ -205,12 +205,13 @@ class ManualSyncTests(unittest.TestCase):
             for name in ('CTkToplevel', 'CTkLabel', 'CTkFrame', 'CTkEntry', 'CTkScrollbar', 'CTkButton', 'CTkFont'):
                 controls[name] = stack.enter_context(patch('muuzika.ctk.' + name))
             box = stack.enter_context(patch('muuzika.tk.Listbox')).return_value
-            stack.enter_context(patch('studio_ui.tk.StringVar'))
+            variable = stack.enter_context(patch('studio_ui.tk.StringVar')).return_value
             entry = app.ui_entry.return_value
+            app.search_field.return_value=(Mock(),entry,Mock(),Mock(),Mock(),Mock())
             entry.get.return_value = ''
             StudioUI.build_library(app, Mock())
             self.assertEqual(box.insert.call_count, 1)
-            search_callback = entry.bind.call_args.args[1]
+            search_callback = variable.trace_add.call_args.args[1]
             entry.get.return_value = 'arviz'
             search_callback()
             self.assertEqual(box.insert.call_count, 2)

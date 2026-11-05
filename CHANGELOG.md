@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.1.0-beta4
+
+- Shared Player/Library search bar with magnifier and transparent arrow controls.
+- Library arrows navigate the filtered results without starting playback.
+- Fixed header action slots isolate cloud/add redraws from neighboring widgets.
+- Mouse press/release and asynchronous sync completion are covered by UI tests.
+
 ## 3.1.0-beta3
 
 - Search match counter, previous/next arrows, Enter and Shift+Enter navigation.

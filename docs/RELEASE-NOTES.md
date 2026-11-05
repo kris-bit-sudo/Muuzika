@@ -1,4 +1,10 @@
-# Muuzika 3.1.0-beta3
+# Muuzika 3.1.0-beta4
+
+- Matching Player and Library search bars, both with magnifiers.
+- Symmetric transparent search arrows without button backgrounds or borders.
+- Fixed cloud/add action slots to prevent neighboring controls moving on clicks.
+
+## Previous beta3 improvements
 
 - Search keeps its query, shows the current match and supports previous/next arrows.
 - Enter moves forward; Shift+Enter moves back; clicking outside ends search.

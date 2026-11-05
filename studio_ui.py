@@ -31,7 +31,7 @@ class StudioUI(PaletteUI):
         source = getattr(self, '_appearance_draft', None) or self.preferences
         self.is_retro = source.get('layout') == 'Retro'
 
-    def ui_button(self, parent, text, command, width=110, accent=False, icon=None, hint=None):
+    def ui_button(self, parent, text, command, width=110, accent=False, icon=None, hint=None, press_effect=True):
         c = self.colors
         button = ctk.CTkButton(parent, text=text, command=command, width=width, height=30,
             corner_radius=15 if self.is_retro else 8, border_width=2 if self.is_retro else 0,
@@ -46,10 +46,41 @@ class StudioUI(PaletteUI):
             self.add_tooltip(button, hint)
         # Pressed colors use the same fixed widget dimensions.
         button._base_fill = button.cget('fg_color')
-        button.bind('<ButtonPress-1>', lambda e: button.configure(fg_color=blend(button._base_fill,c['WHEEL_BORDER'],.22) if self.is_retro else c['BUTTON_PRESSED']) if button.winfo_exists() and button.cget('state') != 'disabled' else None, add='+')
-        button.bind('<ButtonRelease-1>', lambda e: button.configure(fg_color=button._base_fill) if button.winfo_exists() else None, add='+')
-        button.bind('<Leave>', lambda e: button.configure(fg_color=button._base_fill) if button.winfo_exists() else None, add='+')
+        if press_effect:
+            button.bind('<ButtonPress-1>', lambda e: button.configure(fg_color=blend(button._base_fill,c['WHEEL_BORDER'],.22) if self.is_retro else c['BUTTON_PRESSED']) if button.winfo_exists() and button.cget('state') != 'disabled' else None, add='+')
+            button.bind('<ButtonRelease-1>', lambda e: button.configure(fg_color=button._base_fill) if button.winfo_exists() else None, add='+')
+            button.bind('<Leave>', lambda e: button.configure(fg_color=button._base_fill) if button.winfo_exists() else None, add='+')
         return button
+
+    def search_field(self, parent, previous, following, **entry_options):
+        """Shared, fixed-height search chrome; arrows never draw button tiles."""
+        c=self.colors
+        shell=ctk.CTkFrame(parent,fg_color=c['FIELD_BG'],border_width=1,
+            border_color=c['FIELD_BORDER'],corner_radius=8,height=34,width=1)
+        shell.grid_propagate(False)
+        shell.grid_columnconfigure(1,weight=1)
+        shell.grid_rowconfigure(0,weight=1)
+        art=transport_icon('search',c['FIELD_TEXT'])
+        glyph=ctk.CTkLabel(shell,text='',width=24,height=30,
+            image=ctk.CTkImage(art,size=(18,18)))
+        glyph.grid(row=0,column=0,padx=(5,0))
+        entry=self.ui_entry(shell,placeholder_text='Search…',width=60,**entry_options)
+        entry.configure(border_width=0)
+        entry.grid(row=0,column=1,sticky='ew',padx=(0,4),pady=1)
+        glyph.bind('<Button-1>',lambda e:entry.focus_set())
+        count=ctk.CTkLabel(shell,text='',width=35,height=30,font=('Segoe UI',11),text_color=c['FIELD_TEXT'])
+        count.grid(row=0,column=2)
+        arrows=ctk.CTkFrame(shell,width=52,height=30,fg_color='transparent')
+        arrows.grid(row=0,column=3,padx=(2,4))
+        buttons=[]
+        for i,(kind,command) in enumerate((('up',previous),('down',following))):
+            art=transport_icon(kind,c['FIELD_TEXT'])
+            button=ctk.CTkButton(arrows,text='',image=ctk.CTkImage(art,size=(16,16)),
+                width=24,height=30,fg_color='transparent',hover=False,
+                border_width=0,border_spacing=0,corner_radius=0,command=command)
+            button.place(x=i*28,y=0)
+            buttons.append(button)
+        return shell,entry,glyph,count,*buttons
 
     def ui_label(self, parent, text, size=12, bold=False, secondary=False, **kwargs):
         kwargs['wraplength'] = min(kwargs.get('wraplength',1000),max(250,self.winfo_width()-100))
@@ -88,35 +119,23 @@ class StudioUI(PaletteUI):
         self.brand_label.grid(row=0,column=0,columnspan=3,sticky='ew',pady=(0,5))
         self.back_button=self.ui_button(header,'',self.go_back,30,icon='back',hint='Back · Escape')
         self.back_button.grid(row=0,column=0,sticky='w',pady=(0,5))
-        self.search_shell=ctk.CTkFrame(header,fg_color=c['FIELD_BG'],border_width=1,border_color=c['FIELD_BORDER'],corner_radius=8)
+        (self.search_shell,self.list_search,self.search_glyph,self.search_count,
+         self.search_previous,self.search_next)=self.search_field(header,
+            lambda:self.find_in_queue(direction=-1),self.find_in_queue)
         self.search_shell.grid(row=1,column=0,sticky='ew',padx=(0,8))
-        self.search_shell.grid_columnconfigure(1,weight=1)
-        self.search_shell.configure(height=34,width=1)
-        self.search_shell.grid_propagate(False)
-        search_art=transport_icon('search',c['FIELD_TEXT'])
-        self.search_glyph=ctk.CTkLabel(self.search_shell,text='',width=24,image=ctk.CTkImage(light_image=search_art,dark_image=search_art,size=(18,18)))
-        self.search_glyph.grid(row=0,column=0,padx=(5,0))
-        self.search_glyph.bind('<Button-1>',lambda e:self.show_list_search())
-        self.list_search = self.ui_entry(self.search_shell,placeholder_text='Search…',width=100)
-        self.list_search.configure(border_width=0)
-        self.list_search.grid(row=0,column=1,sticky='ew',padx=(0,4),pady=1)
         self.search_button = self.search_shell
         self.list_search.bind('<Return>',self.search_from_header)
         self.list_search.bind('<Escape>',lambda e:self.hide_list_search())
         self.list_search.bind('<Shift-Return>',lambda e:self.find_in_queue(direction=-1))
         self.list_search.bind('<KeyRelease>',self.update_search_results)
-        self.search_count=ctk.CTkLabel(self.search_shell,text='',width=35,font=('Segoe UI',11),text_color=c['FIELD_TEXT'])
-        self.search_count.grid(row=0,column=2)
-        self.search_previous=self.ui_button(self.search_shell,'',lambda:self.find_in_queue(direction=-1),24,icon='up',hint='Previous match · Shift+Enter')
-        self.search_next=self.ui_button(self.search_shell,'',self.find_in_queue,24,icon='down',hint='Next match · Enter')
-        self.search_previous.grid(row=0,column=3)
-        self.search_next.grid(row=0,column=4,padx=(1,3))
         self._search_query=''
         self._search_index=None
-        self.add_files_button=self.ui_button(header,'',self.add_files,32,icon='add',hint='Add files · Ctrl+O')
-        self.add_files_button.grid(row=1,column=1,padx=(0,6))
-        self.sync_button=self.ui_button(header,'',self.sync_library,32,icon='cloud',hint='Server sync · manual refresh')
-        self.sync_button.grid(row=1,column=2)
+        self.header_actions=ctk.CTkFrame(header,width=74,height=34,fg_color='transparent')
+        self.header_actions.grid(row=1,column=1,columnspan=2)
+        self.add_files_button=self.ui_button(self.header_actions,'',self.add_files,34,icon='add',hint='Add files · Ctrl+O',press_effect=False)
+        self.add_files_button.place(x=0,y=2)
+        self.sync_button=self.ui_button(self.header_actions,'',self.sync_library,34,icon='cloud',hint='Server sync · manual refresh',press_effect=False)
+        self.sync_button.place(x=40,y=2)
         self.tabs = ctk.CTkFrame(main, fg_color=c['COLOR_MAIN_CONTAINER'], border_width=1, border_color=c['BORDER'], corner_radius=12)
         self.tabs.grid_columnconfigure(0,weight=1)
         self.ui_label(self.tabs,'Where to?',20,True).grid(row=0,column=0,pady=(24,12))
@@ -302,7 +321,7 @@ class StudioUI(PaletteUI):
             button.configure(hover_color=blend(button._base_fill,self.colors['WHEEL_BORDER'],.18) if self.is_retro else self.colors['COLOR_DRAG_BORDER_NORMAL'])
         full = name == 'Player'
         focused_page=name != 'Player'
-        for widget in (self.search_shell,self.add_files_button,self.sync_button):
+        for widget in (self.search_shell,self.header_actions):
             widget.grid_remove() if focused_page else widget.grid()
         self.playback_panel.grid_remove() if focused_page else self.playback_panel.grid()
         self.status_host.grid_remove() if focused_page else self.status_host.grid()
@@ -449,8 +468,10 @@ class StudioUI(PaletteUI):
         parent.grid_columnconfigure(0,weight=1)
         parent.grid_rowconfigure(2,weight=1)
         search_variable = tk.StringVar()
-        entry = self.ui_entry(parent,placeholder_text='Search title, artist or album…',textvariable=search_variable)
-        entry.grid(row=0,column=0,sticky='ew',pady=(0,6))
+        (self.library_search_shell,entry,self.library_search_glyph,self.library_search_count,
+         self.library_previous,self.library_next)=self.search_field(parent,
+            lambda:step(-1),lambda:step(1),textvariable=search_variable)
+        self.library_search_shell.grid(row=0,column=0,sticky='ew',pady=(0,6))
         status = self.ui_label(parent,'Local library · manual sync only',10,secondary=True,wraplength=400)
         status.grid(row=1,column=0,sticky='ew',pady=(0,5))
         frame = ctk.CTkFrame(parent,fg_color=self.colors['COLOR_PLAYLIST_BG'],corner_radius=8)
@@ -464,11 +485,20 @@ class StudioUI(PaletteUI):
         scroll.configure(command=box.yview)
         results, tracks = [], []
         info = {'date':''}
+        def step(direction):
+            if not results: return 'break'
+            selected=box.curselection()
+            index=((selected[0]+direction)%len(results)) if selected else 0
+            box.selection_clear(0,tk.END);box.selection_set(index);box.see(index)
+            self.library_search_count.configure(text=f'{index+1}/{len(results)}')
+            return 'break'
         def fill(event=None):
             words = search_text(entry.get()).split()
             results[:] = [t for t in tracks if all(w in search_text(f'{t.title} {t.artist} {t.album}') for w in words)]
             box.delete(0,tk.END)
             for t in results: box.insert(tk.END,f'{t.display_name()}  ·  {self.format_time(t.duration)}')
+            self.library_search_count.configure(text='0/0' if words and not results else '')
+            if words and results: step(0)
             status.configure(text=f"{len(results)} tracks · Last sync: {info['date']}" if info['date'] else 'No local library yet. Use Server sync to fetch it.')
         def reload_library():
             if not parent.winfo_exists(): return
@@ -481,7 +511,8 @@ class StudioUI(PaletteUI):
             except (OSError,ValueError,TypeError,AttributeError):
                 status.configure(text='Cannot read the local library. Sync again to rebuild it.')
         self._reload_library = reload_library
-        entry.bind('<KeyRelease>',fill)
+        entry.bind('<Return>',lambda e:step(1))
+        entry.bind('<Shift-Return>',lambda e:step(-1))
         search_variable.trace_add('write',lambda *_:fill())
         row = ctk.CTkFrame(parent,fg_color='transparent')
         row.grid(row=3,column=0,sticky='ew',pady=7)
