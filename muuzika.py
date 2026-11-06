@@ -17,6 +17,7 @@ import math
 from datetime import datetime
 from beta_core import VERSION, LibraryStore, ShuffleOrder, profile_id, cache_filename, search_text, friendly_error
 from ui_icons import transport_icon
+from normalization import Normalizer, Cancelled
 from retro_ui import RetroWheel
 import os
 import random
@@ -340,6 +341,7 @@ class MuuzikaApp(StudioUI, TkinterDnD.Tk):
         self._resume_position = 0.0
         self._queued_next = []
         self.library_store = LibraryStore(os.path.join(APP_DIR, "libraries"))
+        self.normalizer = Normalizer(os.path.join(APP_DIR, 'normalized_audio'))
 
         # --- ikonok (a tálcaikon SOSEM maradhat definiálatlan) ---
         self._setup_icons()
@@ -511,6 +513,7 @@ class MuuzikaApp(StudioUI, TkinterDnD.Tk):
     # ------------------------------------------------------------------
     def load_data(self):
         self.preferences = {
+            "normalize_volume": False,
             "volume": DEFAULT_VOLUME,
             "theme": DEFAULT_THEME,
             "start_minimized": False,
@@ -807,11 +810,28 @@ class MuuzikaApp(StudioUI, TkinterDnD.Tk):
         self.update_play_button()
         self.set_status(friendly_error(err))
 
-    def _start_file(self, path, token, start_at=0.0):
+    def _start_file(self, path, token, start_at=0.0, prepared=False):
         if token != self._play_token:
+            return
+        if self.preferences.get('normalize_volume',False) and not prepared:
+            self.loading=True
+            self.play_pause_btn.configure(state='disabled')
+            self.status_label.configure(text='Preparing volume…')
+            def worker():
+                try:
+                    result=self.normalizer.prepare(path,lambda:token!=self._play_token or self._closed)
+                except Cancelled:
+                    return
+                except Exception:
+                    self.ui_call(lambda:self._normalization_ready(token,None,start_at))
+                    return
+                self.ui_call(lambda:self._normalization_ready(token,result,start_at))
+            threading.Thread(target=worker,daemon=True).start()
             return
         try:
             pygame.mixer.music.load(path)
+            # SDL_mixer resets music volume when loading a new stream.
+            self.set_volume(self.volume_slider.get())
             if start_at > 0:
                 try:
                     pygame.mixer.music.play(start=start_at)
@@ -849,6 +869,16 @@ class MuuzikaApp(StudioUI, TkinterDnD.Tk):
                 except Exception:
                     pass
         self.save_data()
+
+    def _normalization_ready(self, token, path, start_at):
+        if token != self._play_token or self._closed: return
+        self.loading=False
+        self.play_pause_btn.configure(state='normal')
+        self.status_label.configure(text='')
+        if path is None:
+            self.show_notice('Cannot normalize this track. Retry it, or turn off Normalize volume in Settings > Audio to play the original.')
+            return
+        self._start_file(path,token,start_at,prepared=True)
 
     def _scrobble(self, track_id):
         # Manual-sync edition: never send listening activity to the server.
@@ -888,6 +918,7 @@ class MuuzikaApp(StudioUI, TkinterDnD.Tk):
 
     def stop_song(self):
         self._play_token += 1          # a folyamatban lévő letöltés se induljon el
+        self.status_label.configure(text='')
         self.loading = False
         self._resume_position = 0.0
         self._active_path = ""

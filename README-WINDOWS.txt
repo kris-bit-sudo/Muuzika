@@ -1,4 +1,11 @@
-Muuzika 3.1.0-beta4 - Windows x64
+Muuzika 3.1.0-beta5 - Windows x64
+
+Settings > Audio > Normalize volume balances the loudness of different tracks.
+It is off by default and applies when a track starts. First playback can take
+a moment to analyze and prepare; later plays reuse a local lossless copy.
+Original files are unchanged. Stop or selecting another track cancels preparation.
+Very dynamic tracks can remain quieter to prevent clipping. FFmpeg is bundled;
+no extra installation is needed. License/build information: licenses/FFmpeg.
 Vibe-coded by kris
 
 START

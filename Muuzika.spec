@@ -1,8 +1,14 @@
 # Reproducible onedir Windows build; run in the isolated .build-env.
 from PyInstaller.utils.hooks import collect_data_files
+from normalization import find_ffmpeg
+
+ffmpeg = find_ffmpeg()
+if not ffmpeg:
+    raise RuntimeError('Install FFmpeg and put it on PATH before building Muuzika.')
 
 datas = collect_data_files('customtkinter')
 datas += [('fekete.ico', '.'), ('VERSION', '.')]
+datas += [(ffmpeg, 'tools')]
 a = Analysis(
     ['Inditas.pyw'], pathex=[], binaries=[], datas=datas,
     hiddenimports=['keyring.backends.Windows'], hookspath=[],

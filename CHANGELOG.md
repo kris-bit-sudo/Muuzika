@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.1.0-beta5
+
+- Optional Settings > Audio > Normalize volume, saved locally and applied on track start.
+- Offline integrated-loudness/true-peak analysis and constant-gain lossless playback cache.
+- Cancellable preparation, cache reuse, peak protection and unchanged originals.
+- Bundled FFmpeg and build/license notices; no extra user installation required.
+- Reapply the master volume after loading each stream, including normalized copies.
+
 ## 3.1.0-beta4
 
 - Shared Player/Library search bar with magnifier and transparent arrow controls.

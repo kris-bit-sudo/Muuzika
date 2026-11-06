@@ -1,4 +1,11 @@
-# Muuzika 3.1.0-beta4
+# Muuzika 3.1.0-beta5
+
+- Optional Normalize volume switch under Settings > Audio.
+- Balances tracks without compressing their internal dynamics or editing originals.
+- First play prepares local audio; subsequent plays use a cached lossless copy.
+- Peak protection, cancellation, and bundled FFmpeg for standalone Windows use.
+
+## Previous beta4 improvements
 
 - Matching Player and Library search bars, both with magnifiers.
 - Symmetric transparent search arrows without button backgrounds or borders.

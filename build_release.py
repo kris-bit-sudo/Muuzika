@@ -8,6 +8,7 @@ import subprocess
 import sys
 import zipfile
 from beta_core import VERSION
+from normalization import find_ffmpeg
 
 ROOT = Path(__file__).resolve().parent
 dist_root = ROOT / 'dist' / VERSION
@@ -18,6 +19,17 @@ for name in ('README-WINDOWS.txt', 'VERSION', 'LICENSE'):
 license_dir = package / 'licenses'
 license_dir.mkdir(exist_ok=True)
 notices = []
+ffmpeg=Path(find_ffmpeg()).resolve()
+ffmpeg_license=license_dir/'FFmpeg'
+ffmpeg_license.mkdir(exist_ok=True)
+for name in ('LICENSE','README.txt'):
+    source=ffmpeg.parent.parent/name
+    if source.is_file(): shutil.copy2(source,ffmpeg_license/name)
+if not (ffmpeg_license/'LICENSE').exists():
+    shutil.copy2(ROOT/'LICENSE',ffmpeg_license/'LICENSE')
+configuration=subprocess.run([str(ffmpeg),'-version'],capture_output=True,text=True,check=True).stdout
+(ffmpeg_license/'BUILD.txt').write_text(configuration+'\nFFmpeg: https://ffmpeg.org/\nWindows build/source information: https://www.gyan.dev/ffmpeg/builds/\n',encoding='utf-8')
+notices.append('FFmpeg (GPLv3 build; license and original build/source details in licenses/FFmpeg)')
 for distribution in metadata.distributions():
     name = distribution.metadata['Name']
     if name.lower() in ('pip', 'pyinstaller', 'pyinstaller-hooks-contrib', 'altgraph', 'pefile'):

@@ -31,6 +31,7 @@ with patch('requests.sessions.Session.request', side_effect=AssertionError('Netw
         app.refresh_rows()
     app.title('Muuzika · Vizuális próba')
     if '--gallery' in sys.argv: app.show_view('Palettes')
+    if '--audio' in sys.argv: app.settings_section('Audio')
     def audit():
         names = ['playlist_box', 'play_pause_btn', 'prev_button', 'next_button', 'sync_button', 'volume_slider', 'search_shell', 'search_glyph', 'list_search', 'search_count', 'search_previous']
         result = {'window': [app.winfo_width(), app.winfo_height()], 'widgets': {}}

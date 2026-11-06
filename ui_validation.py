@@ -234,6 +234,46 @@ def run_checks(app, m, sample):
     stored=json.loads(Path(m.PLAYER_DATA_FILE).read_text(encoding='utf-8'))
     assert stored['preferences']['saved_palettes']['My purple']['colors']['COLOR_ACCENT'] == '#123456'
     checks.append('Visual palette previews, named saving, duplicate-name validation and custom selection persist')
+    import math, wave
+    from array import array
+    generated=sample.parent/'normalization-tone.wav'
+    pcm=array('h')
+    for i in range(48000*3):
+        value=int(600*math.sin(2*math.pi*440*i/48000));pcm.extend((value,value))
+    with wave.open(str(generated),'wb') as sound:
+        sound.setnchannels(2);sound.setsampwidth(2);sound.setframerate(48000);sound.writeframes(pcm.tobytes())
+    app.settings_section('Audio');pump()
+    import sys
+    if getattr(sys,'frozen',False):
+        assert Path(app.normalizer.executable)==Path(sys._MEIPASS,'tools','ffmpeg.exe')
+    assert not app.preferences.get('normalize_volume',False)
+    app.normalize_switch.toggle();pump()
+    assert json.loads(Path(m.PLAYER_DATA_FILE).read_text(encoding='utf-8'))['preferences']['normalize_volume']
+    app.volume_slider.set(0);app.set_volume(0)
+    app.tracks=[m.Track(path=str(generated),title='Generated test tone',duration=3)]
+    app.show_view('Player');app.play_index(0)
+    deadline=time.monotonic()+30
+    while app.loading and time.monotonic()<deadline:
+        pump();time.sleep(.02)
+    assert app.playing and app._active_path.endswith('.flac'),app._active_path
+    assert m.pygame.mixer.music.get_volume()==0
+    app.toggle_play_pause();assert app.paused
+    app.toggle_play_pause();assert not app.paused
+    app.stop_song()
+    with patch.object(app.normalizer,'_run',side_effect=AssertionError('Prepared audio must be reused')):
+        app.play_index(0,start_at=.5)
+        deadline=time.monotonic()+5
+        while app.loading and time.monotonic()<deadline:
+            pump();time.sleep(.02)
+        assert app.playing and app.seek_offset==.5
+    app.stop_song()
+    app._normalization_ready(app._play_token-1,str(generated),0)
+    assert not app.playing
+    app.settings_section('Audio');app.normalize_switch.toggle();pump()
+    assert not app.preferences['normalize_volume']
+    app.play_index(0);assert app._active_path==str(generated)
+    app.stop_song()
+    checks.append('Normalization persists, plays cached lossless audio with seek/pause/mute, rejects stale completions and switches back to original audio')
     app.preferences.update(theme='Original Green',layout='Original',custom_colors={})
     app.geometry('520x600');app.rebuild_ui();pump()
     app.save_data();no_windows();pump()

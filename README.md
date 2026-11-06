@@ -1,4 +1,4 @@
-# Muuzika 3.1.0-beta4
+# Muuzika 3.1.0-beta5
 
 Vibe-coded by kris.
 
@@ -43,6 +43,21 @@ are disabled. Credentials use Windows keyring when available.
 No personal data, tracks or server configuration is included in the ZIP.
 
 ## Build and verify
+
+Settings > Audio > Normalize volume enables optional per-track loudness
+normalization. It applies when the next track starts (or the current one is
+restarted). First playback analyzes the entire locally available file, then
+caches a lossless FLAC copy with constant gain. Originals are never edited.
+The target is -18 LUFS with a -2 dB true-peak ceiling and at most 20 dB gain;
+peak-limited tracks can remain quieter. Silence is left unchanged. Prepared
+audio uses a roughly 512 MB cache, retaining the currently prepared file.
+Analysis never initiates downloads; uncached server tracks are downloaded only
+as part of their normal playback request. Stop or another track cancels preparation.
+If preparation fails, a message offers retry or disabling normalization; the
+unadjusted track does not unexpectedly start at a higher volume.
+
+The Windows package includes FFmpeg with license/build details under
+`licenses/FFmpeg`. For source use and builds, install FFmpeg on PATH first.
 
 Use a clean environment containing `requirements-release.txt` and PyInstaller,
 then run `python build_release.py`. It creates a versioned ZIP with runtime

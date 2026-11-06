@@ -546,9 +546,11 @@ class StudioUI(PaletteUI):
         nav = ctk.CTkFrame(parent,fg_color='transparent')
         nav.grid(row=0,column=0,sticky='ew',pady=(0,7))
         section = getattr(self,'_settings_section','Appearance')
-        for i,name in enumerate(('Appearance','Window','Connection','About')):
+        for i,name in enumerate(('Appearance','Window','Audio','Connection','About')):
             nav.grid_columnconfigure(i,weight=1,uniform='settings')
-            self.ui_button(nav,{'Appearance':'Style','Connection':'Server'}.get(name,name),lambda n=name:self.settings_section(n),width=1,accent=name==section).grid(row=0,column=i,sticky='ew',padx=2)
+            button=self.ui_button(nav,{'Appearance':'Style','Connection':'Server'}.get(name,name),lambda n=name:self.settings_section(n),width=1,accent=name==section)
+            button.configure(corner_radius=8,border_spacing=3)
+            button.grid(row=0,column=i,sticky='ew',padx=2)
         body = ctk.CTkScrollableFrame(parent,fg_color=self.colors['COLOR_MAIN_CONTAINER'],corner_radius=9,
             scrollbar_button_color=self.colors['COLOR_BUTTON_NORMAL'],scrollbar_button_hover_color=self.colors['COLOR_DRAG_BORDER_NORMAL'])
         body.grid(row=1,column=0,sticky='nsew')
@@ -558,6 +560,22 @@ class StudioUI(PaletteUI):
             self.appearance_actions(parent, grid=True)
         elif section == 'Window': self.build_window_settings(body)
         elif section == 'Connection': self.build_connection(body)
+        elif section == 'Audio':
+            self.ui_label(body,'Consistent listening volume',17,True).pack(anchor='w',padx=8,pady=(12,10))
+            enabled=tk.BooleanVar(value=bool(self.preferences.get('normalize_volume',False)))
+            def changed():
+                self.preferences['normalize_volume']=enabled.get()
+                self.save_data()
+            self.normalize_switch=ctk.CTkSwitch(body,text='Normalize volume',variable=enabled,command=changed,
+                font=('Segoe UI',13),text_color=self.colors['COLOR_GENERAL_FOREGROUND'],
+                progress_color=self.colors['COLOR_ACCENT'],button_color=self.colors['SLIDER_KNOB'])
+            self.normalize_switch.pack(anchor='w',padx=8,pady=8)
+            self.ui_label(body,'Applies when a track starts. The first play may take a moment to prepare.',13,
+                secondary=True,justify='left').pack(anchor='w',padx=8,pady=8)
+            self.ui_label(body,'Balances loud and quiet tracks while keeping their dynamics. Very dynamic tracks may stay quieter to avoid clipping.',13,
+                secondary=True,justify='left').pack(anchor='w',padx=8,pady=8)
+            self.ui_label(body,'Original files stay untouched. Only local or already downloaded audio is analyzed. Prepared audio is cached locally (about 512 MB).',13,
+                secondary=True,justify='left').pack(anchor='w',padx=8,pady=8)
         else:
             self.ui_label(body,'Muuzika',24,True).pack(pady=(16,2))
             self.ui_label(body,f'Version {VERSION}',12,secondary=True).pack(pady=2)
